@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>New-Vue</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .box {
+            width: 500px;
+            height: 500px;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+        }
+    </style>
+</head>
+
+<body>
+    <div id='app'>
+        <div v-show="isWin">{{isWin}} Win!</div>
+        <div class=" box d-grid border">
+            <div v-for="i in 9" @click="userClick" :data-key="i"
+                class="border display-3 d-flex justify-content-center align-items-center"></div>
+        </div>
+        <button class="btn btn-primary mt-3" @click="resetGame">Reset</button>
+    </div>
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    isWin: null,
+                    wins: ['123', '456', '789', '147', '258', '369', '159', '357'],
+                };
+            },
+            mounted() {
+                fetch('/record')
+                    .then(res => res.text())
+                    .then(text => {
+                        [...document.querySelectorAll('.box > div')].map((x, i) => x.textContent = text[i] === '@' ? '' : text[i])
+                        this.checkWin();
+                    })
+            },
+            methods: {
+                userClick(e) {
+                    if (this.isWin) return;
+                    if (e.target.textContent) return;
+                    e.target.textContent = 'X';
+                    this.checkWin();
+                    setTimeout(() => {
+                        this.robotClick();
+                    }, 200);
+                },
+                robotClick() {
+                    if (this.isWin) return;
+                    const divs = [...document.querySelectorAll('.box > div')];
+                    const can = divs.filter(x => x.textContent === '');
+                    const rand = Math.floor(Math.random() * can.length);
+                    can[rand].textContent = 'O';
+                    this.checkWin();
+                },
+                checkWin() {
+                    const divs = [...document.querySelectorAll('.box > div')]
+                    const o = divs.filter(x => x.textContent === 'O').map(x => x.dataset.key).join('');
+                    const x = divs.filter(x => x.textContent === 'X').map(x => x.dataset.key).join('');
+                    for (let win of this.wins) {
+                        const [a, b, c] = win.split('');
+                        const check = (n) => n.includes(a) && n.includes(b) && n.includes(c);
+                        this.isWin = check(o) ? 'O' : check(x) ? "X" : null;
+                        if (this.isWin) break;
+                    }
+                    this.saveGame();
+                },
+                resetGame() {
+                    this.isWin = null;
+                    [...document.querySelectorAll('.box > div')].map(x => x.textContent = '')
+
+                    this.saveGame();
+                },
+                saveGame() {
+                    const divs = [...document.querySelectorAll('.box > div')];
+                    const data = divs.map(x => x.textContent ? x.textContent : '@').join('');
+                    fetch('/save', {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ state: data })
+                    })
+                }
+            },
+        }).mount('#app');
+    </script>
+</body>
+</html>
