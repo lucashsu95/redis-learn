@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <title>隨機匿名聊天室</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .container {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+      h2 {
+        color: #667eea;
+        text-align: center;
+        margin-top: 0;
+      }
+      #chat-box {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        height: 400px;
+        overflow-y: scroll;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: #f9f9f9;
+      }
+      .msg {
+        margin: 8px 0;
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 70%;
+      }
+      .sys-msg {
+        color: #888;
+        font-style: italic;
+        text-align: center;
+        background: #e8f4f8;
+        margin: 10px auto;
+        max-width: 90%;
+      }
+      .my-msg {
+        background: #667eea;
+        color: white;
+        margin-left: auto;
+        text-align: right;
+      }
+      .other-msg {
+        background: #4caf50;
+        color: white;
+        margin-right: auto;
+        text-align: left;
+      }
+      .input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      #msg-input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 25px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.3s;
+      }
+      #msg-input:focus {
+        border-color: #667eea;
+      }
+      button {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        transition: all 0.3s;
+      }
+      #send-btn {
+        background: #667eea;
+        color: white;
+      }
+      #send-btn:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+      }
+      #next-btn {
+        background: #ff6b6b;
+        color: white;
+        width: 100%;
+      }
+      #next-btn:hover {
+        background: #ee5a52;
+        transform: translateY(-2px);
+      }
+      #next-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h2>隨機一對一匿名聊天室</h2>
+      <div id="chat-box"></div>
+
+      <div class="input-group">
+        <input type="text" id="msg-input" placeholder="輸入訊息..." />
+        <button id="send-btn">發送</button>
+      </div>
+
+      <button id="next-btn">下一位 (Next)</button>
+    </div>
+
+    <script>
+      $(document).ready(function () {
+        // 1. 建立連線
+        var socket = io();
+        var isConnected = false;
+
+        // --- 監聽事件 ---
+
+        // 連線成功
+        socket.on("connect", function () {
+          isConnected = true;
+          $("#chat-box").empty();
+          appendSysMessage("已連線，正在尋找配對...");
+        });
+
+        // 接收系統訊息 (配對成功/離開)
+        socket.on("sys_message", function (data) {
+          appendSysMessage(data.content);
+        });
+
+        // 接收聊天訊息
+        socket.on("chat_message", function (data) {
+          var type = data.name === "You" ? "my-msg" : "other-msg";
+          $("#chat-box").append(
+            '<div class="msg ' +
+              type +
+              '"><strong>' +
+              data.name +
+              ":</strong> " +
+              data.content +
+              "</div>"
+          );
+          scrollToBottom();
+        });
+
+        // --- 發送訊息 ---
+
+        $("#send-btn").click(function () {
+          sendMessage();
+        });
+
+        $("#msg-input").keypress(function (e) {
+          if (e.which == 13) {
+            // 按下 Enter
+            sendMessage();
+          }
+        });
+
+        function sendMessage() {
+          var msg = $("#msg-input").val();
+          if (msg.trim() !== "" && isConnected) {
+            // 發送事件給後端
+            socket.emit("message", { content: msg });
+            $("#msg-input").val("");
+          }
+        }
+
+        // --- 下一位功能 ---
+
+        $("#next-btn").click(function () {
+          if (isConnected) {
+            $("#chat-box").empty();
+            socket.emit("next_chat");
+            appendSysMessage("正在尋找新的配對...");
+          }
+        });
+
+        // --- 輔助功能 ---
+
+        function appendSysMessage(text) {
+          $("#chat-box").append(
+            '<div class="sys-msg">--- ' + text + " ---</div>"
+          );
+          scrollToBottom();
+        }
+
+        function scrollToBottom() {
+          $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+        }
+      });
+    </script>
+  </body>
+</html>
