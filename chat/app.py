@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit
 import redis
 import os
 from dotenv import load_dotenv
@@ -155,6 +155,4 @@ def handle_disconnect():
         socketio.emit('sys_message', {'content': '對方已經離開聊天室'}, to=partner_id)
 
 if __name__ == '__main__':
-    port = int(os.getenv('FLASK_PORT', 5000))
-    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    socketio.run(app, port=port, debug=debug)
+    socketio.run(app, port=5000, debug=True)
